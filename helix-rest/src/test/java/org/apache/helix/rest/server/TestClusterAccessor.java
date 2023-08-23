@@ -1415,7 +1415,6 @@ public class TestClusterAccessor extends AbstractTestClass {
     System.out.println("End test :" + TestHelper.getTestMethodName());
   }
 
-
   @Test
   public void testClusterFreezeMode() throws Exception {
     String cluster = "TestCluster_0";

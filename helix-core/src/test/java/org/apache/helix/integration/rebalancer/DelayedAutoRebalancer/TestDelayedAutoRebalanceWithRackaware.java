@@ -83,7 +83,6 @@ public class TestDelayedAutoRebalanceWithRackaware extends TestDelayedAutoRebala
     super.testDelayedPartitionMovementWithClusterConfigedDelay();
   }
 
-
   /**
    * Test when two nodes go offline,  the minimal active replica should be maintained.
    * @throws Exception

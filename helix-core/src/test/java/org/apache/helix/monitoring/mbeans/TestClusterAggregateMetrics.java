@@ -209,7 +209,6 @@ public class TestClusterAggregateMetrics extends ZkTestBase {
     Assert.assertTrue(result);
     Assert.assertTrue(verifier.verifyByPolling());
 
-
     expectedMetricValues.put(WITHOUT_TOPSTATE_COUNT, 0L);
 
     result = TestHelper.verify(() -> {

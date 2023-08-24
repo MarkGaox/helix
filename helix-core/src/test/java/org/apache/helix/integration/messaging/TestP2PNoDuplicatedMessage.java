@@ -196,6 +196,7 @@ public class TestP2PNoDuplicatedMessage extends ZkTestBase {
         "There are duplicated transition messages sent while participant is handling the state-transition!");
     Assert.assertEquals(MockHelixTaskExecutor.duplicatedMessages, 0,
         "There are duplicated transition messages sent at same time!");
+
     System.out.println("end: testP2PStateTransitionEnabled");
   }
 

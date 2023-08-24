@@ -160,6 +160,7 @@ public class TestP2PNoDuplicatedMessage extends ZkTestBase {
 
   @Test (dependsOnMethods = {"testP2PStateTransitionDisabled"})
   public void testP2PStateTransitionEnabled() throws Exception {
+    System.out.println("start: testP2PStateTransitionEnabled");
     enableP2PInCluster(CLUSTER_NAME, _configAccessor, true);
     long startTime = System.currentTimeMillis();
     MockHelixTaskExecutor.resetStats();
@@ -195,6 +196,8 @@ public class TestP2PNoDuplicatedMessage extends ZkTestBase {
         "There are duplicated transition messages sent while participant is handling the state-transition!");
     Assert.assertEquals(MockHelixTaskExecutor.duplicatedMessages, 0,
         "There are duplicated transition messages sent at same time!");
+
+    System.out.println("end: testP2PStateTransitionEnabled");
   }
 
   private void verifyP2PDisabled() {
@@ -242,6 +245,10 @@ public class TestP2PNoDuplicatedMessage extends ZkTestBase {
               p2pTriggered ++;
             }
             total ++;
+            if (p2pTriggered != total) {
+              logger.info(String.format("Instance %s has triggerHost %s while expecting trigger host to be %s.", instance, triggerHost, _controllerName));
+              logger.info(currentState.toString());
+            }
           }
         }
       }

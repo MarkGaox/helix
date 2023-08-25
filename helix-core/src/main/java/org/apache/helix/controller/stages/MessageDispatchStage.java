@@ -178,6 +178,11 @@ public abstract class MessageDispatchStage extends AbstractBaseStage {
                   .getPartitionNames() + " from:" + msg.getFromState() + " to:" + msg.getToState()
                   + ", relayFrom: " + msg.getRelaySrcHost() + ", attached to message: " + message
                   .getMsgId());
+          System.out.println("Sending Relay Message " + msg.getMsgId() + " to " + msg.getTgtName() + " transit "
+              + msg.getResourceName() + "." + msg.getPartitionName() + "|" + msg
+              .getPartitionNames() + " from:" + msg.getFromState() + " to:" + msg.getToState()
+              + ", relayFrom: " + msg.getRelaySrcHost() + ", attached to message: " + message
+              .getMsgId());
         }
       }
 

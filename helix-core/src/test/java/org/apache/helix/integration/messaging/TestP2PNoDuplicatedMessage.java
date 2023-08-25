@@ -159,7 +159,7 @@ public class TestP2PNoDuplicatedMessage extends ZkTestBase {
         "There are duplicated transition messages sent at same time!");
   }
 
-  @Test (dependsOnMethods = {"testP2PStateTransitionDisabled"})
+  @Test (dependsOnMethods = {"testP2PStateTransitionDisabled"}, timeOut = 3600000)
   public void testP2PStateTransitionEnabled() throws Exception {
     System.out.println("start: testP2PStateTransitionEnabled");
     enableP2PInCluster(CLUSTER_NAME, _configAccessor, true);

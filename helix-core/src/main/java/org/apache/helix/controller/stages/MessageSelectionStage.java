@@ -220,7 +220,6 @@ public class MessageSelectionStage extends AbstractBaseStage {
           }
         }
 
-
         if (stateConstraints.containsKey(toState)) {
           int newCnt = (stateCnts.containsKey(toState) ? stateCnts.get(toState) + 1 : 1);
           if (newCnt > stateConstraints.get(toState).getUpperBound()) {

@@ -24,6 +24,7 @@ import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
+import java.util.Timer;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.apache.helix.ClusterMessagingService;
@@ -164,8 +165,11 @@ public class TestP2PNoDuplicatedMessage extends ZkTestBase {
     enableP2PInCluster(CLUSTER_NAME, _configAccessor, true);
     long startTime = System.currentTimeMillis();
     MockHelixTaskExecutor.resetStats();
+    long timeout = 60 * 60 * 1000L; // timeout 1h
+    long sleeptime = 60 * 10 * 1000L;
     // rolling upgrade the cluster
     for (String ins : _instances) {
+      System.out.println("Disable instance: " + ins);
       _gSetupTool.getClusterManagementTool().enableInstance(CLUSTER_NAME, ins, false);
       Assert.assertTrue(_clusterVerifier.verifyByPolling());
       // Since new host that receives the p2p relay message will record the source host (controller)
@@ -175,19 +179,33 @@ public class TestP2PNoDuplicatedMessage extends ZkTestBase {
             total = 0;
             p2pTriggered = 0;
             verifyP2PEnabled(startTime);
+            if (total != p2pTriggered) {
+              System.out.println("Number of successful p2p transitions when disable instance " + ins + ": " + p2pTriggered
+                  + " , expect: " + total);
+              System.out.println("Sleep for 10min before retry.");
+              Thread.sleep(sleeptime);
+            }
+
             return total == p2pTriggered;
-          }, TestHelper.WAIT_DURATION),
+          }, timeout),
           "Number of successful p2p transitions when disable instance " + ins + ": " + p2pTriggered
               + " , expect: " + total);
 
+      System.out.println("Enable instance: " + ins);
       _gSetupTool.getClusterManagementTool().enableInstance(CLUSTER_NAME, ins, true);
       Assert.assertTrue(_clusterVerifier.verifyByPolling());
       Assert.assertTrue(TestHelper.verify(() -> {
             total = 0;
             p2pTriggered = 0;
             verifyP2PEnabled(startTime);
+            if (total != p2pTriggered) {
+              System.out.println("Number of successful p2p transitions when disable instance " + ins + ": " + p2pTriggered
+                  + " , expect: " + total);
+              System.out.println("Sleep for 10min before retry.");
+              Thread.sleep(sleeptime);
+            }
             return total == p2pTriggered;
-          }, TestHelper.WAIT_DURATION),
+          }, timeout),
           "Number of successful p2p transitions when enable instance " + ins + ":" + p2pTriggered
               + " , expect:" + total);
     }
@@ -245,8 +263,8 @@ public class TestP2PNoDuplicatedMessage extends ZkTestBase {
             }
             total ++;
             if (p2pTriggered != total) {
-              logger.info(String.format("Instance %s has triggerHost %s while expecting trigger host to be %s.", instance, triggerHost, _controllerName));
-              logger.info(currentState.toString());
+              System.out.println(String.format("Instance %s has triggerHost %s while expecting trigger host to be %s.", instance, triggerHost, _controllerName));
+              System.out.println(currentState.toString());
             }
           }
         }

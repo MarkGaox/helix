@@ -159,7 +159,7 @@ public class TestP2PNoDuplicatedMessage extends ZkTestBase {
         "There are duplicated transition messages sent at same time!");
   }
 
-  @Test (dependsOnMethods = {"testP2PStateTransitionDisabled"}, timeOut = 3600000)
+  @Test (dependsOnMethods = {"testP2PStateTransitionDisabled"})
   public void testP2PStateTransitionEnabled() throws Exception {
     System.out.println("start: testP2PStateTransitionEnabled");
     enableP2PInCluster(CLUSTER_NAME, _configAccessor, true);
@@ -169,7 +169,7 @@ public class TestP2PNoDuplicatedMessage extends ZkTestBase {
     long sleeptime = 60 * 10 * 1000L;
     // rolling upgrade the cluster
     for (String ins : _instances) {
-      System.out.println("Disable instance: " + ins);
+      System.out.println("****************** Disable instance: " + ins);
       _gSetupTool.getClusterManagementTool().enableInstance(CLUSTER_NAME, ins, false);
       Assert.assertTrue(_clusterVerifier.verifyByPolling());
       // Since new host that receives the p2p relay message will record the source host (controller)
@@ -191,7 +191,7 @@ public class TestP2PNoDuplicatedMessage extends ZkTestBase {
           "Number of successful p2p transitions when disable instance " + ins + ": " + p2pTriggered
               + " , expect: " + total);
 
-      System.out.println("Enable instance: " + ins);
+      System.out.println("********************* Enable instance: " + ins);
       _gSetupTool.getClusterManagementTool().enableInstance(CLUSTER_NAME, ins, true);
       Assert.assertTrue(_clusterVerifier.verifyByPolling());
       Assert.assertTrue(TestHelper.verify(() -> {

@@ -190,7 +190,6 @@ public class TestP2PNoDuplicatedMessage extends ZkTestBase {
           }, timeout),
           "Number of successful p2p transitions when disable instance " + ins + ": " + p2pTriggered
               + " , expect: " + total);
-
       System.out.println("********************* Enable instance: " + ins);
       _gSetupTool.getClusterManagementTool().enableInstance(CLUSTER_NAME, ins, true);
       Assert.assertTrue(_clusterVerifier.verifyByPolling());

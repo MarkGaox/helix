@@ -193,7 +193,6 @@ public class MessageSelectionStage extends AbstractBaseStage {
       }
     }
 
-
     // select messages
     for (List<Message> messageList : messagesGroupByStateTransitPriority.values()) {
       NextMessage:

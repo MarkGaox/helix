@@ -207,13 +207,18 @@ public class MessageSelectionStage extends AbstractBaseStage {
           for (Message relayMsg : pendingRelayMessages) {
             if (relayMsg.getToState().equals(toState) && relayMsg.getFromState()
                 .equals(fromState)) {
-              System.out.println(String.format(
-                  "There is pending relay message, pending relay message: %s, relay time starts %d, expiry timeout %d.",
-                  relayMsg.getMsgId(), relayMsg.getRelayTime(), relayMsg.getExpiryPeriod()));
+              LOG.info(
+                  "There is pending relay message, pending relay message: {}, relay time starts {}, expiry timeout {}.",
+                  relayMsg.getMsgId(), relayMsg.getRelayTime(), relayMsg.getExpiryPeriod());
+              System.out.println(
+                  "There is pending relay message, pending relay message: " + relayMsg.getMsgId()
+                      + ", relay time starts " + relayMsg.getRelayTime() + ", expiry timeout "
+                      + relayMsg.getExpiryPeriod());
               if (!relayMsg.getTgtName().equals(message.getTgtName())) {
-                System.out.println(String.format(
-                    "The pending relay message was sent to a different host, not send message: %s, pending relay message: %d",
-                    message.getMsgId(), relayMsg.getId()));
+
+                System.out.println(
+                    "The pending relay message was sent to a different host, not send message: "
+                        + message.getMsgId() + ", pending relay message: " + relayMsg.getId());
                 continue NextMessage;
               }
             }

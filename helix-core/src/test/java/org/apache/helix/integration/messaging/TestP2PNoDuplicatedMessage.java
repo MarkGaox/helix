@@ -191,7 +191,6 @@ public class TestP2PNoDuplicatedMessage extends ZkTestBase {
           "Number of successful p2p transitions when disable instance " + ins + ": " + p2pTriggered
               + " , expect: " + total);
 
-
       Thread.sleep(5000);
 
       System.out.println("********************* Enable instance: " + ins);

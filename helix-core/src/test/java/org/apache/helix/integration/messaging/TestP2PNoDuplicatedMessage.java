@@ -190,7 +190,6 @@ public class TestP2PNoDuplicatedMessage extends ZkTestBase {
           }, timeout),
           "Number of successful p2p transitions when disable instance " + ins + ": " + p2pTriggered
               + " , expect: " + total);
-
       Thread.sleep(5000);
 
       System.out.println("********************* Enable instance: " + ins);
@@ -210,6 +209,7 @@ public class TestP2PNoDuplicatedMessage extends ZkTestBase {
           }, timeout),
           "Number of successful p2p transitions when enable instance " + ins + ":" + p2pTriggered
               + " , expect:" + total);
+      Thread.sleep(5000);
     }
 
     Assert.assertEquals(MockHelixTaskExecutor.duplicatedMessagesInProgress, 0,

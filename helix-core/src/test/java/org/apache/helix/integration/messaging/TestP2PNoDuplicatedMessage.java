@@ -185,7 +185,6 @@ public class TestP2PNoDuplicatedMessage extends ZkTestBase {
               System.out.println("Sleep for 10min before retry.");
               Thread.sleep(sleeptime);
             }
-
             return total == p2pTriggered;
           }, timeout),
           "Number of successful p2p transitions when disable instance " + ins + ": " + p2pTriggered

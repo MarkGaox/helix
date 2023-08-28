@@ -191,7 +191,6 @@ public class TestP2PNoDuplicatedMessage extends ZkTestBase {
               + " , expect: " + total);
       Thread.sleep(5000);
 
-
       System.out.println("********************* Enable instance: " + ins);
       _gSetupTool.getClusterManagementTool().enableInstance(CLUSTER_NAME, ins, true);
       Assert.assertTrue(_clusterVerifier.verifyByPolling());

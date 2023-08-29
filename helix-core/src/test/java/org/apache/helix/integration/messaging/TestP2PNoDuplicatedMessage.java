@@ -71,6 +71,7 @@ public class TestP2PNoDuplicatedMessage extends ZkTestBase {
 
   static final int DB_COUNT = 2;
 
+
   static final int PARTITION_NUMBER = 100;
   static final int REPLICA_NUMBER = 3;
 

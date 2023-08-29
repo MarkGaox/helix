@@ -181,6 +181,8 @@ public abstract class MessageDispatchStage extends AbstractBaseStage {
         }
       }
 
+      printMessage(message);
+
       keys.add(keyBuilder.message(message.getTgtName(), message.getId()));
     }
 
@@ -194,5 +196,22 @@ public abstract class MessageDispatchStage extends AbstractBaseStage {
     }
 
     return messageSent;
+  }
+
+  private void printMessage(Message message) {
+    System.out.println(_eventId + "Sending Message " + message.getMsgId() + " to " + message.getTgtName() + " transit "
+        + message.getResourceName() + "." + message.getPartitionName() + "|" + message
+        .getPartitionNames() + " from:" + message.getFromState() + " to:" + message
+        .getToState() + ", relayMessages: " + message.getRelayMessages().size() + ", message source: " + message.getMsgSrc() + ", expiry period: " + message.getExpiryPeriod());
+
+    if (message.hasRelayMessages()) {
+      for (Message msg : message.getRelayMessages().values()) {
+        System.out.println("Sending Relay Message " + msg.getMsgId() + " to " + msg.getTgtName() + " transit "
+            + msg.getResourceName() + "." + msg.getPartitionName() + "|" + msg
+            .getPartitionNames() + " from:" + msg.getFromState() + " to:" + msg.getToState()
+            + ", relayFrom: " + msg.getRelaySrcHost() + ", attached to message: " + message
+            .getMsgId() + ", message source: " + msg.getMsgSrc() + ", expiry period: " + msg.getExpiryPeriod());
+      }
+    }
   }
 }

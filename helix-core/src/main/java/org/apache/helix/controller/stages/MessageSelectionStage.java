@@ -210,10 +210,18 @@ public class MessageSelectionStage extends AbstractBaseStage {
               LOG.info(
                   "There is pending relay message, pending relay message: {}, relay time starts {}, expiry timeout {}.",
                   relayMsg.getMsgId(), relayMsg.getRelayTime(), relayMsg.getExpiryPeriod());
+              System.out.println(
+                  "There is pending relay message, pending relay message: " + relayMsg.getMsgId()
+                      + ", relay time starts " + relayMsg.getRelayTime() + ", expiry timeout "
+                      + relayMsg.getExpiryPeriod());
+              printMessage(relayMsg, "printing this relay message detail: ");
+
               if (!relayMsg.getTgtName().equals(message.getTgtName())) {
-                LOG.info(
-                    "The pending relay message was sent to a different host, not send message: {}, pending relay message: {}",
-                    message.getMsgId(), relayMsg.getId());
+
+                System.out.println(
+                    "The pending relay message was sent to a different host, not send message: "
+                        + message.getMsgId() + ", pending relay message: " + relayMsg.getId());
+                printMessage(message, "Print the message that has been throttled.....");
                 continue NextMessage;
               }
             }
@@ -248,6 +256,31 @@ public class MessageSelectionStage extends AbstractBaseStage {
 
     return selectedMessages;
   }
+
+  private void printMessage(Message message, String str) {
+    System.out.println(str);
+    System.out.println(
+        "Message detail: " + message.getMsgId() + " to " + message.getTgtName() + " transit "
+            + message.getResourceName() + "." + message.getPartitionName() + "|"
+            + message.getPartitionNames() + " from:" + message.getFromState() + " to:"
+            + message.getToState() + ", relayMessages: " + message.getRelayMessages().size()
+            + ", message source: " + message.getMsgSrc() + ", expiry period: "
+            + message.getExpiryPeriod() + ", relay time: " + message.getRelayTime());
+
+    if (message.hasRelayMessages()) {
+      for (Message msg : message.getRelayMessages().values()) {
+        System.out.println(
+            "This message has relay Message " + msg.getMsgId() + " to " + msg.getTgtName()
+                + " transit " + msg.getResourceName() + "." + msg.getPartitionName() + "|"
+                + msg.getPartitionNames() + " from:" + msg.getFromState() + " to:"
+                + msg.getToState() + ", relayFrom: " + msg.getRelaySrcHost()
+                + ", attached to message: " + message.getMsgId() + ", message source: "
+                + msg.getMsgSrc() + ", expiry period: " + msg.getExpiryPeriod() + ", relay time: "
+                + message.getRelayTime());
+      }
+    }
+  }
+
 
   /**
    * TODO: This code is duplicate in multiple places. Can we do it in to one place in the

@@ -32,6 +32,7 @@ import org.apache.helix.HelixDataAccessor;
 import org.apache.helix.HelixManager;
 import org.apache.helix.InstanceType;
 import org.apache.helix.TestHelper;
+import org.apache.helix.api.config.StateTransitionTimeoutConfig;
 import org.apache.helix.common.ZkTestBase;
 import org.apache.helix.controller.dataproviders.ResourceControllerDataProvider;
 import org.apache.helix.controller.rebalancer.strategy.CrushEdRebalanceStrategy;
@@ -46,10 +47,12 @@ import org.apache.helix.messaging.handling.MockHelixTaskExecutor;
 import org.apache.helix.model.BuiltInStateModelDefinitions;
 import org.apache.helix.model.CurrentState;
 import org.apache.helix.model.LiveInstance;
+import org.apache.helix.model.ResourceConfig;
 import org.apache.helix.monitoring.mbeans.MessageQueueMonitor;
 import org.apache.helix.monitoring.mbeans.ParticipantStatusMonitor;
 import org.apache.helix.tools.ClusterVerifiers.BestPossibleExternalViewVerifier;
 import org.apache.helix.tools.ClusterVerifiers.ZkHelixClusterVerifier;
+import org.apache.helix.zookeeper.datamodel.ZNRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testng.Assert;
@@ -124,6 +127,23 @@ public class TestP2PNoDuplicatedMessage extends ZkTestBase {
 
     _configAccessor = new ConfigAccessor(_gZkClient);
     _accessor = new ZKHelixDataAccessor(CLUSTER_NAME, _baseAccessor);
+
+    int stTimeout = 50000;
+    for (int i = 0; i < DB_COUNT; i++) {
+      String testDB = "TestDB_" + i;
+      StateTransitionTimeoutConfig stateTransitionTimeoutConfig =
+          new StateTransitionTimeoutConfig(new ZNRecord(testDB));
+      stateTransitionTimeoutConfig.setStateTransitionTimeout("SLAVE", "MASTER", stTimeout);
+      stateTransitionTimeoutConfig.setStateTransitionTimeout("MASTER", "SLAVE", stTimeout);
+
+      ResourceConfig newConfig = new ResourceConfig.Builder(testDB).setStateTransitionTimeoutConfig(
+          stateTransitionTimeoutConfig).build();
+      _configAccessor.setResourceConfig(CLUSTER_NAME, testDB, newConfig);
+      Assert.assertTrue(_clusterVerifier.verifyByPolling());
+      Assert.assertEquals(
+          _configAccessor.getResourceConfig(CLUSTER_NAME, testDB).getStateTransitionTimeoutConfig()
+              .getStateTransitionTimeout("SLAVE", "MASTER"), stTimeout);
+    }
   }
 
   @AfterClass
@@ -159,29 +179,62 @@ public class TestP2PNoDuplicatedMessage extends ZkTestBase {
   }
 
   @Test (dependsOnMethods = {"testP2PStateTransitionDisabled"})
-  public void testP2PStateTransitionEnabled() {
+  public void testP2PStateTransitionEnabled() throws Exception {
+    System.out.println("start: testP2PStateTransitionEnabled");
     enableP2PInCluster(CLUSTER_NAME, _configAccessor, true);
     long startTime = System.currentTimeMillis();
     MockHelixTaskExecutor.resetStats();
+    long timeout = 60 * 60 * 1000L; // timeout 1h
+    long sleeptime = 60 * 10 * 1000L;
     // rolling upgrade the cluster
     for (String ins : _instances) {
+      System.out.println("****************** Disable instance: " + ins);
       _gSetupTool.getClusterManagementTool().enableInstance(CLUSTER_NAME, ins, false);
       Assert.assertTrue(_clusterVerifier.verifyByPolling());
-      verifyP2PEnabled(startTime);
+      // Since new host that receives the p2p relay message will record the source host (controller)
+      // of the relay message as the trigger host, the top state transition triggered by the
+      // controller should be equal to the total number of top state transitions.
+      Assert.assertTrue(TestHelper.verify(() -> {
+            total = 0;
+            p2pTriggered = 0;
+            verifyP2PEnabled(startTime);
+            if (total != p2pTriggered) {
+              System.out.println("Number of successful p2p transitions when disable instance " + ins + ": " + p2pTriggered
+                  + " , expect: " + total);
+              System.out.println("Sleep for 10min before retry.");
+              Thread.sleep(sleeptime);
+            }
+            return total == p2pTriggered;
+          }, timeout),
+          "Number of successful p2p transitions when disable instance " + ins + ": " + p2pTriggered
+              + " , expect: " + total);
+      // Thread.sleep(5000);
 
+      System.out.println("********************* Enable instance: " + ins);
       _gSetupTool.getClusterManagementTool().enableInstance(CLUSTER_NAME, ins, true);
       Assert.assertTrue(_clusterVerifier.verifyByPolling());
-      verifyP2PEnabled(startTime);
+      Assert.assertTrue(TestHelper.verify(() -> {
+            total = 0;
+            p2pTriggered = 0;
+            verifyP2PEnabled(startTime);
+            if (total != p2pTriggered) {
+              System.out.println("Number of successful p2p transitions when disable instance " + ins + ": " + p2pTriggered
+                  + " , expect: " + total);
+              System.out.println("Sleep for 10min before retry.");
+              Thread.sleep(sleeptime);
+            }
+            return total == p2pTriggered;
+          }, timeout),
+          "Number of successful p2p transitions when enable instance " + ins + ":" + p2pTriggered
+              + " , expect:" + total);
+      //Thread.sleep(5000);
     }
 
-    // The success rate really depends on how quick participant act in relationship with controller.
-    // For now, we set 90% threshold.
-    long threshold = Math.round(total * 0.9);
-    Assert.assertTrue( p2pTrigged > Math.round(total * 0.9));
     Assert.assertEquals(MockHelixTaskExecutor.duplicatedMessagesInProgress, 0,
         "There are duplicated transition messages sent while participant is handling the state-transition!");
     Assert.assertEquals(MockHelixTaskExecutor.duplicatedMessages, 0,
         "There are duplicated transition messages sent at same time!");
+    System.out.println("end: testP2PStateTransitionEnabled");
   }
 
   private void verifyP2PDisabled() {
@@ -208,7 +261,7 @@ public class TestP2PNoDuplicatedMessage extends ZkTestBase {
   }
 
   static int total = 0;
-  static int p2pTrigged = 0;
+  static int p2pTriggered = 0;
 
   private void verifyP2PEnabled(long startTime) {
     ResourceControllerDataProvider dataCache = new ResourceControllerDataProvider(CLUSTER_NAME);
@@ -226,9 +279,13 @@ public class TestP2PNoDuplicatedMessage extends ZkTestBase {
           if (state.equalsIgnoreCase("MASTER") && start > startTime) {
             String triggerHost = currentState.getTriggerHost(partition);
             if (!triggerHost.equals(_controllerName)) {
-              p2pTrigged ++;
+              p2pTriggered ++;
             }
             total ++;
+            if (p2pTriggered != total) {
+              System.out.println(String.format("Instance %s has triggerHost %s while expecting trigger host to be %s.", instance, triggerHost, _controllerName));
+              System.out.println(currentState.toString());
+            }
           }
         }
       }

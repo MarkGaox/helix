@@ -24,7 +24,6 @@ import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
-import java.util.Timer;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.apache.helix.ClusterMessagingService;
@@ -129,17 +128,22 @@ public class TestP2PNoDuplicatedMessage extends ZkTestBase {
     _configAccessor = new ConfigAccessor(_gZkClient);
     _accessor = new ZKHelixDataAccessor(CLUSTER_NAME, _baseAccessor);
 
+    int stTimeout = 50000;
     for (int i = 0; i < DB_COUNT; i++) {
       String testDB = "TestDB_" + i;
       StateTransitionTimeoutConfig stateTransitionTimeoutConfig =
           new StateTransitionTimeoutConfig(new ZNRecord(testDB));
-      stateTransitionTimeoutConfig.setStateTransitionTimeout("SLAVE", "MASTER", 10000);
+      stateTransitionTimeoutConfig.setStateTransitionTimeout("SLAVE", "MASTER", stTimeout);
+      stateTransitionTimeoutConfig.setStateTransitionTimeout("MASTER", "SLAVE", stTimeout);
 
       ResourceConfig newConfig = new ResourceConfig.Builder(testDB).setStateTransitionTimeoutConfig(
           stateTransitionTimeoutConfig).build();
       _configAccessor.setResourceConfig(CLUSTER_NAME, testDB, newConfig);
+      Assert.assertTrue(_clusterVerifier.verifyByPolling());
+      Assert.assertEquals(
+          _configAccessor.getResourceConfig(CLUSTER_NAME, testDB).getStateTransitionTimeoutConfig()
+              .getStateTransitionTimeout("SLAVE", "MASTER"), stTimeout);
     }
-    Assert.assertTrue(_clusterVerifier.verifyByPolling());
   }
 
   @AfterClass

@@ -93,6 +93,7 @@ public class InstanceMessagesCache {
    */
   public boolean refresh(HelixDataAccessor accessor, Map<String, LiveInstance> liveInstanceMap) {
     LOG.info("START: InstanceMessagesCache.refresh()");
+    System.out.println("START: InstanceMessagesCache.refresh()");
     long startTime = System.currentTimeMillis();
 
     PropertyKey.Builder keyBuilder = accessor.keyBuilder();
@@ -153,7 +154,8 @@ public class InstanceMessagesCache {
     LOG.info(
         "END: InstanceMessagesCache.refresh(), {} of Messages read from ZooKeeper. took {} ms. ",
         newMessageKeys.size(), (System.currentTimeMillis() - startTime));
-
+    System.out.println("END: InstanceMessagesCache.refresh(), {} of Messages read from ZooKeeper. took {} ms. " +
+        newMessageKeys.size() + " " + (System.currentTimeMillis() - startTime));
     refreshStaleMessageCache();
     return true;
   }
@@ -211,6 +213,7 @@ public class InstanceMessagesCache {
           LOG.warn("Invalid relay message {}, remove it from the cache.", relayMessage.getId());
           iterator.remove();
           _relayHostMessageCache.remove(relayMessage.getMsgId());
+          printMessage(relayMessage, "Following relay message is removed from cache because it's invalid");
           continue;
         }
 
@@ -222,6 +225,7 @@ public class InstanceMessagesCache {
                 relayMessage.getId());
             iterator.remove();
             _relayHostMessageCache.remove(relayMessage.getMsgId());
+            printMessage(relayMessage, "Following relay message already committed, remove relay message it from the cache.");
             continue;
           } else {
             // controller already sent the same message to target host,
@@ -232,6 +236,7 @@ public class InstanceMessagesCache {
                 "Controller already sent the message to the target host, set relay message {} to be expired.",
                 relayMessage.getId());
             setMessageRelayTime(relayMessage, currentTime);
+            printMessage(relayMessage,  "Controller already sent the message to the target host, set following relay message to be expired.");
           }
         }
 
@@ -255,6 +260,7 @@ public class InstanceMessagesCache {
               relayMessage.getId(), relayMessage.getRelayTime());
           iterator.remove();
           _relayHostMessageCache.remove(relayMessage.getMsgId());
+          printMessage(relayMessage, "Following relay message expired, remove it from cache. relay time: " + relayMessage.getRelayTime());
           continue;
         }
 
@@ -269,6 +275,7 @@ public class InstanceMessagesCache {
               "relay message {} has reached its lifetime, remove it from cache.", relayMessage.getId());
           iterator.remove();
           _relayHostMessageCache.remove(relayMessage.getMsgId());
+          printMessage(relayMessage, "Following relay message has reached its lifetime, remove it from cache.");
           continue;
         }
 
@@ -313,6 +320,32 @@ public class InstanceMessagesCache {
     LOG.info(
         "END: updateRelayMessages(), {} of valid relay messages in cache, took {} ms. ",
         relayMessageCount, (System.currentTimeMillis() - currentTime));
+    System.out.println("END: updateRelayMessages(), of valid relay messages in cache, took ms. "
+        + relayMessageCount + " " + (System.currentTimeMillis() - currentTime));
+  }
+
+  private void printMessage(Message message, String str) {
+    System.out.println(str);
+    System.out.println(
+        "Message detail: " + message.getMsgId() + " to " + message.getTgtName() + " transit "
+            + message.getResourceName() + "." + message.getPartitionName() + "|"
+            + message.getPartitionNames() + " from:" + message.getFromState() + " to:"
+            + message.getToState() + ", relayMessages: " + message.getRelayMessages().size()
+            + ", message source: " + message.getMsgSrc() + ", expiry period: "
+            + message.getExpiryPeriod() + ", relay time: " + message.getRelayTime());
+
+    if (message.hasRelayMessages()) {
+      for (Message msg : message.getRelayMessages().values()) {
+        System.out.println(
+            "This message has relay Message " + msg.getMsgId() + " to " + msg.getTgtName()
+                + " transit " + msg.getResourceName() + "." + msg.getPartitionName() + "|"
+                + msg.getPartitionNames() + " from:" + msg.getFromState() + " to:"
+                + msg.getToState() + ", relayFrom: " + msg.getRelaySrcHost()
+                + ", attached to message: " + message.getMsgId() + ", message source: "
+                + msg.getMsgSrc() + ", expiry period: " + msg.getExpiryPeriod() + ", relay time: "
+                + message.getRelayTime());
+      }
+    }
   }
 
   // Check partition's state on the relay message's target host (The relay message's destination host).
@@ -377,6 +410,8 @@ public class InstanceMessagesCache {
       setMessageRelayTime(relayMessage, currentTime);
       LOG.debug("{}'s currentState {} on {} has changed, set relay message {} to be expired.",
           partitionName, partitionCurrentState, targetHost, relayMessage.getId());
+      printMessage(relayMessage, String.format("{}'s currentState {} on {} has changed, set relay message {} to be expired.",
+      partitionName, partitionCurrentState, targetHost, relayMessage.getId()));
     }
   }
 
@@ -441,6 +476,9 @@ public class InstanceMessagesCache {
                 + "expiring relay message {} immediately. Hosted message {}.", partitionName,
             relayMessage.getId(), hostedMessage.getId());
         relayMessage.setExpired(true);
+        printMessage(relayMessage, String.format("Partition {} got to ERROR from the top state, "
+                + "expiring relay message {} immediately. Hosted message {}.", partitionName,
+            relayMessage.getId(), hostedMessage.getId()));
         return;
       }
 
@@ -453,6 +491,7 @@ public class InstanceMessagesCache {
           setMessageRelayTime(relayMessage, completeTime);
           LOG.error("Target state for partition {} matches the hosted message's target state, "
               + "set relay message {} to be expired.", partitionName, relayMessage.getId());
+          printMessage(relayMessage, "Target state matches current state. ");
           return;
         }
       }
@@ -463,6 +502,9 @@ public class InstanceMessagesCache {
       LOG.info("Current state {} for partition {} does not match hosted message's from state, "
               + "set relay message {} to be expired.", partitionState, partitionName,
           relayMessage.getId());
+      printMessage(relayMessage, String.format("Current state {} for partition {} does not match hosted message's from state, "
+              + "set relay message {} to be expired.", partitionState, partitionName,
+          relayMessage.getId()));
     }
   }
 
@@ -475,6 +517,8 @@ public class InstanceMessagesCache {
     relayMessage.setRelayTime(relayTime);
     LOG.info("Set relay message {} relay time at {}, to be expired at {}", relayMessage.getId(),
         relayTime, (relayTime + relayMessage.getExpiryPeriod()));
+    System.out.println(String.format("Set relay message {} relay time at {}, to be expired at {}", relayMessage.getId(),
+        relayTime, (relayTime + relayMessage.getExpiryPeriod())));
   }
 
 
@@ -544,6 +588,7 @@ public class InstanceMessagesCache {
   // filter stale message cache by message cache to remove already deleted messages
   private void refreshStaleMessageCache() {
     LOG.info("Start to refresh stale message cache");
+    System.out.println("Start to refresh stale message cache");
     Map<String, Set<String>> toRemoveMessages = new HashMap<>();
     for (String instanceName : _staleMessageCache.keySet()) {
       for (String messageId : _staleMessageCache.get(instanceName).keySet()) {

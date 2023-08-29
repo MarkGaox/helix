@@ -79,7 +79,8 @@ public class HelixTask implements MessageTask {
 
     long start = System.currentTimeMillis();
     logger.info("handling task: " + getTaskId() + " begin, at: " + start);
-    System.out.println("handling task: " + getTaskId() + " begin, at: " + start);
+    printMessage(_message, "Executing message at " + start + " taskId " + getTaskId());
+//    System.out.println("handling task: " + getTaskId() + " begin, at: " + start);
     _statusUpdateUtil.logInfo(_message, HelixTask.class, "Message handling task begin execute",
         _manager);
     _message.setExecuteStartTimeStamp(new Date().getTime());
@@ -130,6 +131,7 @@ public class HelixTask implements MessageTask {
             .logInfo(_message, _handler.getClass(), "Message handling task completed successfully", _manager);
         logger.info("Message " + _message.getMsgId() + " completed.");
         System.out.println("Message " + _message.getMsgId() + " message source: " +_message.getMsgSrc() + "; message reley source host" + _message.getRelaySrcHost() + " completed.");
+        printMessage(_message, "Following Message complete, next step is to forward relay message");
         _executor.getParticipantMonitor().reportProcessedMessage(_message, ParticipantMessageMonitor.ProcessedMessageState.COMPLETED);
       } else {
         type = ErrorType.INTERNAL;
@@ -188,7 +190,7 @@ public class HelixTask implements MessageTask {
           // Fail to send relay message should not result in a task execution failure
           // Currently we don't log error to ZK to reduce writes as when accessor throws
           // exception, ZK might not be in good condition.
-          System.out.println("********** Failed to send relay messages. ***********" + e);
+          System.out.println("********** Failed to forward relay messages. ***********" + e);
           logger.warn("Failed to send relay messages.", e);
         }
       }
@@ -232,6 +234,7 @@ public class HelixTask implements MessageTask {
       logger.warn("Failed to delete message " + message.getId() + " from zk!");
     } else {
       logger.info("Delete message " + message.getId() + " from zk!");
+      System.out.println(message.getId() + " is deleted from ZK!");
     }
   }
 
@@ -259,6 +262,7 @@ public class HelixTask implements MessageTask {
             logger.info(
                 "********* Relay message expired, ignore " + msg.getId() + " to instance " + instance);
             System.out.println("Relay message expired, ignore " + msg.getId() + " to instance " + instance);
+            printMessage(msg, "Relay message expired...ignore");
             continue;
           }
           PropertyKey msgKey = keyBuilder.message(instance, msg.getId());
@@ -267,9 +271,11 @@ public class HelixTask implements MessageTask {
           if (!success) {
             System.out.printf("Failed to send relay message " + msg.getId() + " to " + instance);
             logger.warn("Failed to send relay message " + msg.getId() + " to " + instance);
+            printMessage(msg, "Failed to send relay msg to ZK");
           } else {
             System.out.println("Send relay message " + msg.getId() + " to " + instance);
             logger.info("Send relay message " + msg.getId() + " to " + instance);
+            printMessage(msg, "Successfully write relay msg to ZK");
           }
         }
       }
@@ -360,6 +366,30 @@ public class HelixTask implements MessageTask {
     System.out.println("1. Message " + _message.getMsgId() + " is " + e);
     System.out.println("2. Message detail:" + _message.getMsgId() + " message source: " + _message.getMsgSrc()
         + "; message reley source host" + _message.getRelaySrcHost());
+  }
+
+  private void printMessage(Message message, String str) {
+    System.out.println(str);
+    System.out.println(
+        "Message detail: " + message.getMsgId() + " to " + message.getTgtName() + " transit "
+            + message.getResourceName() + "." + message.getPartitionName() + "|"
+            + message.getPartitionNames() + " from:" + message.getFromState() + " to:"
+            + message.getToState() + ", relayMessages: " + message.getRelayMessages().size()
+            + ", message source: " + message.getMsgSrc() + ", expiry period: "
+            + message.getExpiryPeriod() + ", relay time: " + message.getRelayTime());
+
+    if (message.hasRelayMessages()) {
+      for (Message msg : message.getRelayMessages().values()) {
+        System.out.println(
+            "This message has relay Message " + msg.getMsgId() + " to " + msg.getTgtName()
+                + " transit " + msg.getResourceName() + "." + msg.getPartitionName() + "|"
+                + msg.getPartitionNames() + " from:" + msg.getFromState() + " to:"
+                + msg.getToState() + ", relayFrom: " + msg.getRelaySrcHost()
+                + ", attached to message: " + message.getMsgId() + ", message source: "
+                + msg.getMsgSrc() + ", expiry period: " + msg.getExpiryPeriod() + ", relay time: "
+                + message.getRelayTime());
+      }
+    }
   }
 
   @Override

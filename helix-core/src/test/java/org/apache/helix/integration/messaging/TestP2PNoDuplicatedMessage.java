@@ -33,6 +33,7 @@ import org.apache.helix.HelixDataAccessor;
 import org.apache.helix.HelixManager;
 import org.apache.helix.InstanceType;
 import org.apache.helix.TestHelper;
+import org.apache.helix.api.config.StateTransitionTimeoutConfig;
 import org.apache.helix.common.ZkTestBase;
 import org.apache.helix.controller.dataproviders.ResourceControllerDataProvider;
 import org.apache.helix.controller.rebalancer.strategy.CrushEdRebalanceStrategy;
@@ -47,10 +48,12 @@ import org.apache.helix.messaging.handling.MockHelixTaskExecutor;
 import org.apache.helix.model.BuiltInStateModelDefinitions;
 import org.apache.helix.model.CurrentState;
 import org.apache.helix.model.LiveInstance;
+import org.apache.helix.model.ResourceConfig;
 import org.apache.helix.monitoring.mbeans.MessageQueueMonitor;
 import org.apache.helix.monitoring.mbeans.ParticipantStatusMonitor;
 import org.apache.helix.tools.ClusterVerifiers.BestPossibleExternalViewVerifier;
 import org.apache.helix.tools.ClusterVerifiers.ZkHelixClusterVerifier;
+import org.apache.helix.zookeeper.datamodel.ZNRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testng.Assert;
@@ -125,6 +128,18 @@ public class TestP2PNoDuplicatedMessage extends ZkTestBase {
 
     _configAccessor = new ConfigAccessor(_gZkClient);
     _accessor = new ZKHelixDataAccessor(CLUSTER_NAME, _baseAccessor);
+
+    for (int i = 0; i < DB_COUNT; i++) {
+      String testDB = "TestDB_" + i;
+      StateTransitionTimeoutConfig stateTransitionTimeoutConfig =
+          new StateTransitionTimeoutConfig(new ZNRecord(testDB));
+      stateTransitionTimeoutConfig.setStateTransitionTimeout("SLAVE", "MASTER", 10000);
+
+      ResourceConfig newConfig = new ResourceConfig.Builder(testDB).setStateTransitionTimeoutConfig(
+          stateTransitionTimeoutConfig).build();
+      _configAccessor.setResourceConfig(CLUSTER_NAME, testDB, newConfig);
+    }
+    Assert.assertTrue(_clusterVerifier.verifyByPolling());
   }
 
   @AfterClass
@@ -189,7 +204,7 @@ public class TestP2PNoDuplicatedMessage extends ZkTestBase {
           }, timeout),
           "Number of successful p2p transitions when disable instance " + ins + ": " + p2pTriggered
               + " , expect: " + total);
-      Thread.sleep(5000);
+      // Thread.sleep(5000);
 
       System.out.println("********************* Enable instance: " + ins);
       _gSetupTool.getClusterManagementTool().enableInstance(CLUSTER_NAME, ins, true);
@@ -208,7 +223,7 @@ public class TestP2PNoDuplicatedMessage extends ZkTestBase {
           }, timeout),
           "Number of successful p2p transitions when enable instance " + ins + ":" + p2pTriggered
               + " , expect:" + total);
-      Thread.sleep(5000);
+      //Thread.sleep(5000);
     }
 
     Assert.assertEquals(MockHelixTaskExecutor.duplicatedMessagesInProgress, 0,

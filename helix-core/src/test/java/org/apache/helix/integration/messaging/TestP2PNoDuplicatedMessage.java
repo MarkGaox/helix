@@ -175,6 +175,7 @@ public class TestP2PNoDuplicatedMessage extends ZkTestBase {
         "There are duplicated transition messages sent at same time!");
   }
 
+
   private void verifyP2P(long startTime, String instance, boolean enabled) throws Exception {
     _gSetupTool.getClusterManagementTool().enableInstance(CLUSTER_NAME, instance, enabled);
     Assert.assertTrue(_clusterVerifier.verifyByPolling());
